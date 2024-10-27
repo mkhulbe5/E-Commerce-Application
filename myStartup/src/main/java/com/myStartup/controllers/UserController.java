@@ -1,5 +1,6 @@
 package com.myStartup.controllers;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -11,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.myStartup.CacheService.RedisService;
 import com.myStartup.dto.UserDto;
 import com.myStartup.exceptions.AlreadyExistsException;
 import com.myStartup.exceptions.ResourceNotFoundException;
@@ -29,12 +32,22 @@ public class UserController {
 
 	private final UserService userService;
 
+	@Autowired
+	private RedisService cacheService;
+
+	private UserDto userDto;
+
 	@GetMapping("/{userId}/user")
-	public ResponseEntity<ApiResponse> getUserById(@PathVariable Long userId) {
+	public ResponseEntity<ApiResponse> getUserById(@PathVariable Long userId) throws JsonProcessingException {
 		try {
-			User user = userService.getUserById(userId);
-			UserDto userDto = userService.convertUserToDto(user);
-			return ResponseEntity.ok(new ApiResponse("Success", userDto));
+			if (userId != null) {
+				UserDto userDto = cacheService.getValueFromCache(userId, UserDto.class);
+				return ResponseEntity.ok(new ApiResponse("Success", userDto));
+			} else {
+				User user = userService.getUserById(userId);
+				userDto = userService.convertUserToDto(user);
+				return ResponseEntity.ok(new ApiResponse("Success", userDto));
+			}
 		} catch (ResourceNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(e.getMessage(), null));
 		}

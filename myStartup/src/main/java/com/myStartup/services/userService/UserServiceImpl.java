@@ -3,8 +3,11 @@ package com.myStartup.services.userService;
 import java.util.Optional;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import com.myStartup.CacheService.RedisService;
 import com.myStartup.dto.UserDto;
 import com.myStartup.exceptions.AlreadyExistsException;
 import com.myStartup.exceptions.ResourceNotFoundException;
@@ -20,6 +23,10 @@ import lombok.RequiredArgsConstructor;
 public class UserServiceImpl implements UserService {
 	private final UserRepository userRepository;
 	private final ModelMapper modelMapper;
+	
+	
+	@Autowired
+	private RedisService cacheService;
 
 	@Override
 	public User getUserById(Long userId) {
@@ -34,6 +41,7 @@ public class UserServiceImpl implements UserService {
 			user.setPassword(request.getPassword());
 			user.setFirstName(request.getFirstName());
 			user.setLastName(request.getLastName());
+			cacheService.setValueInRedis(1l,user,300l);
 			return userRepository.save(user);
 		}).orElseThrow(() -> new AlreadyExistsException("Oops!" + request.getEmail() + " already exists!"));
 	}
